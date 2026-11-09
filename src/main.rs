@@ -324,6 +324,9 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     let sidebar_scroll = gtk::ScrolledWindow::builder()
         .child(&sidebar)
         .hscrollbar_policy(gtk::PolicyType::Never)
+        .width_request(220)
+        .hexpand(false)
+        .halign(gtk::Align::Start)
         .vexpand(true)
         .build();
 
@@ -333,14 +336,12 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     content.append(&wizard.page_host);
     content.append(&wizard.status);
 
-    let paned = gtk::Paned::new(gtk::Orientation::Horizontal);
-    paned.set_start_child(Some(&sidebar_scroll));
-    paned.set_end_child(Some(&content));
-    paned.set_position(230);
+    let paned = gtk::Box::new(gtk::Orientation::Horizontal, 0);
+    paned.append(&sidebar_scroll);
+    paned.append(&gtk::Separator::new(gtk::Orientation::Vertical));
+    paned.append(&content);
     paned.set_hexpand(true);
     paned.set_vexpand(true);
-    paned.set_shrink_start_child(true);
-    paned.set_shrink_end_child(true);
 
     let back = gtk::Button::with_label("Back");
     let next = gtk::Button::with_label("Next");

@@ -66,13 +66,16 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "style",
-        title: "Styling",
+        title: "UI config",
         subtitle: "Pick a starting bar and dock layout.",
         icon: "preferences-desktop-theme-symbolic",
         kind: PageKind::Style,
         controls: &[
             control("ojuny.dux.barPreset", "Bar"),
             control("desktop.ojuny.dux.dockConfigs.dock.enabled", "Dock"),
+            control("desktop.ojuny.dux.settings.launcherStyle", "Launcher"),
+            control("desktop.ojuny.dux.settings.dankLauncherV2Size", "Launcher"),
+            control("ojuny.menu.toggleTarget", "Menu"),
         ],
     },
     PageSpec {
