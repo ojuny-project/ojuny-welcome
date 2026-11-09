@@ -48,6 +48,7 @@ struct Wizard {
     current: Cell<usize>,
     page_host: gtk::Box,
     next_steps: gtk::Box,
+    showing_next_steps: Cell<bool>,
     status: gtk::Label,
 }
 
@@ -298,6 +299,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
         current: Cell::new(0),
         page_host,
         next_steps,
+        showing_next_steps: Cell::new(false),
         status: gtk::Label::builder()
             .xalign(0.0)
             .css_classes(["dim-label"])
@@ -401,10 +403,12 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     {
         let wizard = wizard.clone();
         let sidebar_for_select = sidebar.clone();
+        let next_for_select = next.clone();
         sidebar.connect_row_selected(move |_, row| {
             let Some(row) = row else { return };
             let id = row.widget_name();
             if let Some(index) = wizard.pages.iter().position(|page| page.spec.id == id) {
+                next_for_select.set_label("Next");
                 select_page(&wizard, &sidebar_for_select, index);
             }
         });
@@ -413,9 +417,11 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
         let wizard = wizard.clone();
         let sidebar = sidebar.clone();
         let back = back.clone();
+        let next_for_back = next.clone();
         back.connect_clicked(move |_| {
             let current = wizard.current.get();
             if current > 0 {
+                next_for_back.set_label("Next");
                 select_page(&wizard, &sidebar, current - 1);
             }
         });
@@ -425,7 +431,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
         let sidebar = sidebar.clone();
         let next_button = next.clone();
         next.connect_clicked(move |_| {
-            if wizard.config.borrow().setup_completed {
+            if wizard.showing_next_steps.get() {
                 std::process::Command::new("nix-settings-gui").spawn().ok();
                 return;
             }
@@ -464,6 +470,7 @@ fn select_page(wizard: &Rc<Wizard>, sidebar: &gtk::ListBox, index: usize) {
         return;
     }
     let index = index.min(wizard.pages.len() - 1);
+    wizard.showing_next_steps.set(false);
     wizard.current.set(index);
     let page = &wizard.pages[index];
     while let Some(child) = wizard.page_host.first_child() {
@@ -549,6 +556,7 @@ fn show_wizard(wizard: &Rc<Wizard>, sidebar: &gtk::ListBox, next: &gtk::Button) 
 }
 
 fn show_next_steps(wizard: &Rc<Wizard>, _sidebar: &gtk::ListBox, next: &gtk::Button) {
+    wizard.showing_next_steps.set(true);
     while let Some(child) = wizard.page_host.first_child() {
         wizard.page_host.remove(&child);
     }
