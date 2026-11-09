@@ -288,14 +288,16 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     layout.append(&footer);
 
     let header = adw::HeaderBar::new();
+    let toolbar = adw::ToolbarView::new();
+    toolbar.add_top_bar(&header);
+    toolbar.set_content(Some(&layout));
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Welcome to Ojuny")
         .default_width(980)
         .default_height(720)
-        .content(&layout)
+        .content(&toolbar)
         .build();
-    window.set_titlebar(Some(&header));
 
     if wizard.config.borrow().setup_completed {
         show_next_steps(&wizard, &sidebar, &next);
@@ -460,6 +462,7 @@ fn build_next_steps() -> (gtk::Box, adw::ActionRow) {
             .css_classes(["dim-label"])
             .build(),
     );
+    let group = adw::PreferencesGroup::new();
     let actions = [
         ("Update your system", "Open the settings GUI", "nix-settings-gui"),
         ("Read the manual", "Open the Ojuny manual", "ojuny-manual"),
@@ -481,13 +484,14 @@ fn build_next_steps() -> (gtk::Box, adw::ActionRow) {
                 let _ = std::process::Command::new(program).args(parts).spawn();
             }
         });
-        root.append(&row);
+        group.add(&row);
     }
     let reset = adw::ActionRow::builder()
         .title("Re-run the setup wizard")
         .subtitle("Reset completion and start from the first page")
         .activatable(true)
         .build();
-    root.append(&reset);
+    group.add(&reset);
+    root.append(&group);
     (root, reset)
 }
