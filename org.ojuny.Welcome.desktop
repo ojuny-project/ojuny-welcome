@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Ojuny Welcome
+Comment=First-boot setup and next steps
+Exec=ojuny-welcome
+Terminal=false
+Type=Application
+Categories=Settings;System;
+StartupNotify=true

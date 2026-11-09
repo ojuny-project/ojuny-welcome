@@ -1,0 +1,8 @@
+[Desktop Entry]
+Name=Ojuny Welcome
+Comment=First-boot setup and next steps
+Exec=ojuny-welcome --autostart
+Terminal=false
+Type=Application
+X-GNOME-Autostart-enabled=true
+NoDisplay=true

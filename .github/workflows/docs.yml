@@ -1,0 +1,28 @@
+name: docs
+
+on:
+  pull_request:
+
+jobs:
+  docs:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v5
+      - name: Check links
+        uses: lycheeverse/lychee-action@v2
+        with:
+          args: --offline --no-progress README.md
+      - name: Fail on placeholder strings
+        run: |
+          if command -v rg >/dev/null 2>&1; then
+            matches=$(rg -n --no-heading \
+              -e 'your-org' -e 'github:you/' -e 'TODO' -e 'TBD' \
+              -e 'coming soon' -e 'see defaults/schema' README.md || true)
+          else
+            matches=$(grep -nE \
+              'your-org|github:you/|TODO|TBD|coming soon|see defaults/schema' README.md || true)
+          fi
+          if [ -n "$matches" ]; then
+            printf '%s\n' "$matches"
+            exit 1
+          fi
