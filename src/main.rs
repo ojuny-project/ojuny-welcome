@@ -38,6 +38,7 @@ const APP_ID: &str = "org.ojuny.Welcome";
 struct PageView {
     spec: &'static PageSpec,
     controls: Vec<(Record, Editor)>,
+    root: gtk::ScrolledWindow,
 }
 
 struct Wizard {
@@ -45,7 +46,8 @@ struct Wizard {
     config: RefCell<WelcomeConfig>,
     pages: Vec<PageView>,
     current: Cell<usize>,
-    page_stack: gtk::Stack,
+    page_host: gtk::Box,
+    next_steps: gtk::Box,
     status: gtk::Label,
 }
 
@@ -119,18 +121,16 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     }
     let show_gpu_override = gpu_override_needed(&flake);
 
-    let page_stack = gtk::Stack::builder()
-        .transition_type(gtk::StackTransitionType::Crossfade)
-        .hexpand(true)
-        .vexpand(true)
-        .build();
+    let page_host = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    page_host.set_hexpand(true);
+    page_host.set_vexpand(true);
     let mut pages = Vec::new();
     for spec in PAGES {
         let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
-        root.set_margin_top(18);
-        root.set_margin_bottom(18);
-        root.set_margin_start(24);
-        root.set_margin_end(24);
+        root.set_margin_top(12);
+        root.set_margin_bottom(12);
+        root.set_margin_start(16);
+        root.set_margin_end(16);
         root.set_hexpand(true);
         root.set_vexpand(true);
         root.append(
@@ -219,8 +219,21 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
                 );
             }
             let editor_root = editor.root();
-            editor_root.set_hexpand(true);
-            editor_root.set_halign(gtk::Align::Fill);
+            let fills = matches!(
+                editor,
+                Editor::Text(_)
+                    | Editor::Path(_)
+                    | Editor::Multiline { .. }
+                    | Editor::Raw { .. }
+                    | Editor::Package { .. }
+                    | Editor::List { .. }
+                    | Editor::ModuleList { .. }
+                    | Editor::Submodule { .. }
+                    | Editor::HorizontalSubmodule { .. }
+                    | Editor::Slider(_)
+            );
+            editor_root.set_hexpand(fills);
+            editor_root.set_halign(if fills { gtk::Align::Fill } else { gtk::Align::Start });
             row.append(&editor_root);
             root.append(&row);
             controls.push((record.clone(), editor));
@@ -267,22 +280,22 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
             .hscrollbar_policy(gtk::PolicyType::Never)
             .propagate_natural_width(false)
             .build();
-        page_stack.add_named(&scrolled, Some(spec.id));
         pages.push(PageView {
             spec,
             controls,
+            root: scrolled,
         });
     }
 
     let (next_steps, reset_row, rebuild_row) = build_next_steps();
-    page_stack.add_named(&next_steps, Some("next-steps"));
 
     let wizard = Rc::new(Wizard {
         flake,
         config: RefCell::new(config.clone()),
         pages,
         current: Cell::new(0),
-        page_stack,
+        page_host,
+        next_steps,
         status: gtk::Label::builder()
             .xalign(0.0)
             .css_classes(["dim-label"])
@@ -317,7 +330,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
     content.set_hexpand(true);
     content.set_vexpand(true);
-    content.append(&wizard.page_stack);
+    content.append(&wizard.page_host);
     content.append(&wizard.status);
 
     let paned = gtk::Paned::new(gtk::Orientation::Horizontal);
@@ -433,7 +446,10 @@ fn select_page(wizard: &Rc<Wizard>, sidebar: &gtk::ListBox, index: usize) {
     let index = index.min(wizard.pages.len() - 1);
     wizard.current.set(index);
     let page = &wizard.pages[index];
-    wizard.page_stack.set_visible_child_name(page.spec.id);
+    while let Some(child) = wizard.page_host.first_child() {
+        wizard.page_host.remove(&child);
+    }
+    wizard.page_host.append(&page.root);
     if let Some(row) = sidebar.row_at_index(index as i32) {
         sidebar.select_row(Some(&row));
     }
@@ -513,7 +529,10 @@ fn show_wizard(wizard: &Rc<Wizard>, sidebar: &gtk::ListBox, next: &gtk::Button) 
 }
 
 fn show_next_steps(wizard: &Rc<Wizard>, _sidebar: &gtk::ListBox, next: &gtk::Button) {
-    wizard.page_stack.set_visible_child_name("next-steps");
+    while let Some(child) = wizard.page_host.first_child() {
+        wizard.page_host.remove(&child);
+    }
+    wizard.page_host.append(&wizard.next_steps);
     wizard.status.set_text("Setup is complete");
     next.set_label("Open settings");
 }
