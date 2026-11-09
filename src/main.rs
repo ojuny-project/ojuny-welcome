@@ -231,6 +231,8 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
                     | Editor::Submodule { .. }
                     | Editor::HorizontalSubmodule { .. }
                     | Editor::Slider(_)
+                    | Editor::Theme { .. }
+                    | Editor::StyleChoice { .. }
             );
             editor_root.set_hexpand(fills);
             editor_root.set_halign(if fills { gtk::Align::Fill } else { gtk::Align::Start });
@@ -305,18 +307,19 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     let sidebar = gtk::ListBox::new();
     sidebar.set_selection_mode(gtk::SelectionMode::Single);
     sidebar.add_css_class("navigation-sidebar");
+    let mut sidebar_labels = Vec::new();
     for page in &wizard.pages {
         let row = gtk::ListBoxRow::new();
         let content = gtk::Box::new(gtk::Orientation::Horizontal, 8);
         content.append(&page_icon(page.spec.icon));
-        content.append(
-            &gtk::Label::builder()
-                .label(page.spec.title)
-                .xalign(0.0)
-                .hexpand(true)
-                .ellipsize(gtk::pango::EllipsizeMode::End)
-                .build(),
-        );
+        let sidebar_label = gtk::Label::builder()
+            .label(page.spec.title)
+            .xalign(0.0)
+            .hexpand(true)
+            .ellipsize(gtk::pango::EllipsizeMode::End)
+            .build();
+        content.append(&sidebar_label);
+        sidebar_labels.push(sidebar_label);
         row.set_child(Some(&content));
         row.set_widget_name(page.spec.id);
         sidebar.append(&row);
@@ -361,6 +364,22 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     layout.append(&paned);
 
     let header = adw::HeaderBar::new();
+    let collapse = gtk::ToggleButton::builder()
+        .icon_name("sidebar-show-symbolic")
+        .tooltip_text("Show icons only")
+        .build();
+    header.pack_start(&collapse);
+    {
+        let labels = sidebar_labels.clone();
+        let sidebar_scroll = sidebar_scroll.clone();
+        collapse.connect_toggled(move |button| {
+            let icons = button.is_active();
+            sidebar_scroll.set_width_request(if icons { 60 } else { 220 });
+            for label in &labels {
+                label.set_visible(!icons);
+            }
+        });
+    }
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&header);
     toolbar.set_content(Some(&layout));
