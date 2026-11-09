@@ -121,6 +121,8 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
 
     let page_stack = gtk::Stack::builder()
         .transition_type(gtk::StackTransitionType::Crossfade)
+        .hhomogeneous(false)
+        .vhomogeneous(false)
         .hexpand(true)
         .vexpand(true)
         .build();
@@ -269,7 +271,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
             .child(&root)
             .vexpand(true)
             .hexpand(true)
-            .hscrollbar_policy(gtk::PolicyType::Automatic)
+            .hscrollbar_policy(gtk::PolicyType::Never)
             .propagate_natural_width(false)
             .build();
         page_stack.add_named(&scrolled, Some(spec.id));
@@ -306,6 +308,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
                 .label(page.spec.title)
                 .xalign(0.0)
                 .hexpand(true)
+                .ellipsize(gtk::pango::EllipsizeMode::End)
                 .build(),
         );
         row.set_child(Some(&content));
@@ -314,7 +317,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     }
     let sidebar_scroll = gtk::ScrolledWindow::builder()
         .child(&sidebar)
-        .width_request(230)
+        .hscrollbar_policy(gtk::PolicyType::Never)
         .vexpand(true)
         .build();
 
