@@ -5,13 +5,20 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use adw::prelude::*;
+use gtk::prelude::*;
 use nix_settings_gui::model::Record;
 use nix_settings_gui::widgets::{build, facter_detect, BuildContext, Editor};
 use nix_settings_gui::{edit, flake_inputs, nixpkgs, scan};
 
 use config::WelcomeConfig;
 use pages::{PageKind, PageSpec, PAGES};
+
+fn record_path(record: &Record) -> String {
+    let path = record.path();
+    path.strip_prefix("config.")
+        .unwrap_or(&path)
+        .to_string()
+}
 
 const APP_ID: &str = "org.ojuny.Welcome";
 
@@ -38,7 +45,7 @@ fn main() -> gtk::glib::ExitCode {
         .position(|arg| arg == "--flake")
         .and_then(|index| args.get(index + 1).cloned());
 
-    let application = adw::Application::builder().application_id(APP_ID).build();
+    let application = gtk::Application::builder().application_id(APP_ID).build();
     application.connect_activate(move |app| {
         let mut config = WelcomeConfig::load();
         if reset {
@@ -66,7 +73,7 @@ fn main() -> gtk::glib::ExitCode {
     application.run_with_args(&gtk_args)
 }
 
-fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
+fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
     let scanned = match scan::scan_root(&flake) {
         Ok(scanned) => scanned,
         Err(error) => {
@@ -77,7 +84,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     let mut records = HashMap::new();
     for menu in &scanned.menus {
         for record in &menu.records {
-            records.insert(record.path(), record.clone());
+            records.insert(record_path(record), record.clone());
         }
     }
     let show_gpu_override = gpu_override_needed(&flake);
@@ -189,7 +196,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
                 .build();
             let editors: Vec<(String, Editor)> = controls
                 .iter()
-                .map(|(record, editor)| (record.path(), editor.clone()))
+                .map(|(record, editor)| (record_path(record), editor.clone()))
                 .collect();
             picker.connect_selected_notify(move |picker| {
                 let Some((preset, dock)) = values.get(picker.selected() as usize) else {
@@ -287,17 +294,15 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     layout.append(&paned);
     layout.append(&footer);
 
-    let header = adw::HeaderBar::new();
-    let toolbar = adw::ToolbarView::new();
-    toolbar.add_top_bar(&header);
-    toolbar.set_content(Some(&layout));
-    let window = adw::ApplicationWindow::builder()
+    let header = gtk::HeaderBar::new();
+    let window = gtk::ApplicationWindow::builder()
         .application(app)
         .title("Welcome to Ojuny")
         .default_width(980)
         .default_height(720)
-        .content(&toolbar)
+        .child(&layout)
         .build();
+    window.set_titlebar(Some(&header));
 
     if wizard.config.borrow().setup_completed {
         show_next_steps(&wizard, &sidebar, &next);
@@ -348,7 +353,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
         let wizard = wizard.clone();
         let sidebar = sidebar.clone();
         let next_button = next.clone();
-        reset_row.connect_activated(move |_| {
+        reset_row.connect_clicked(move |_| {
             let mut config = wizard.config.borrow_mut();
             config.reset();
             let _ = config.save();
@@ -441,7 +446,36 @@ fn gpu_override_needed(flake: &str) -> bool {
     detection.state != "matched"
 }
 
-fn build_next_steps() -> (gtk::Box, adw::ActionRow) {
+fn action_row(title: &str, subtitle: &str, command: &'static str) -> gtk::Button {
+    let button = gtk::Button::new();
+    button.add_css_class("flat");
+    let content = gtk::Box::new(gtk::Orientation::Vertical, 2);
+    content.append(
+        &gtk::Label::builder()
+            .label(title)
+            .xalign(0.0)
+            .css_classes(["title-5"])
+            .build(),
+    );
+    content.append(
+        &gtk::Label::builder()
+            .label(subtitle)
+            .xalign(0.0)
+            .wrap(true)
+            .css_classes(["dim-label"])
+            .build(),
+    );
+    button.set_child(Some(&content));
+    button.connect_clicked(move |_| {
+        let mut parts = command.split_whitespace();
+        if let Some(program) = parts.next() {
+            let _ = std::process::Command::new(program).args(parts).spawn();
+        }
+    });
+    button
+}
+
+fn build_next_steps() -> (gtk::Box, gtk::Button) {
     let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
     root.set_margin_top(24);
     root.set_margin_bottom(24);
@@ -462,36 +496,23 @@ fn build_next_steps() -> (gtk::Box, adw::ActionRow) {
             .css_classes(["dim-label"])
             .build(),
     );
-    let group = adw::PreferencesGroup::new();
-    let actions = [
-        ("Update your system", "Open the settings GUI", "nix-settings-gui"),
-        ("Read the manual", "Open the Ojuny manual", "ojuny-manual"),
-        (
-            "Visit the website",
-            "Open the what-is-ojuny page",
-            "xdg-open https://ojuny-project.github.io/",
-        ),
-    ];
-    for (title, subtitle, command) in actions {
-        let row = adw::ActionRow::builder()
-            .title(title)
-            .subtitle(subtitle)
-            .activatable(true)
-            .build();
-        row.connect_activated(move |_| {
-            let mut parts = command.split_whitespace();
-            if let Some(program) = parts.next() {
-                let _ = std::process::Command::new(program).args(parts).spawn();
-            }
-        });
-        group.add(&row);
-    }
-    let reset = adw::ActionRow::builder()
-        .title("Re-run the setup wizard")
-        .subtitle("Reset completion and start from the first page")
-        .activatable(true)
-        .build();
-    group.add(&reset);
-    root.append(&group);
+    root.append(&action_row(
+        "Update your system",
+        "Open the settings GUI",
+        "nix-settings-gui",
+    ));
+    root.append(&action_row(
+        "Read the manual",
+        "Open the Ojuny manual",
+        "ojuny-manual",
+    ));
+    root.append(&action_row(
+        "Visit the website",
+        "Open the what-is-ojuny page",
+        "xdg-open https://ojuny-project.github.io/",
+    ));
+    let reset = gtk::Button::with_label("Re-run the setup wizard");
+    reset.add_css_class("flat");
+    root.append(&reset);
     (root, reset)
 }

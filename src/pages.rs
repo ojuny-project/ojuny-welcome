@@ -160,6 +160,7 @@ pub static PAGES: &[PageSpec] = &[
         icon: "applications-system-symbolic",
         kind: PageKind::Options,
         controls: &[
+            control("ojuny.patches", "Patches engine"),
             control("ojuny.patch.development.enable", "Patches"),
             control("ojuny.patch.docker.enable", "Patches"),
             control("ojuny.patch.flatpak.enable", "Patches"),

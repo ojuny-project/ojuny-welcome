@@ -542,7 +542,6 @@ name = "ojuny-welcome"
 version = "0.1.0"
 dependencies = [
  "gtk4",
- "libadwaita",
  "nix-settings-gui",
  "serde",
  "serde_json",
