@@ -49,3 +49,4 @@ A `v*` tag, a manual workflow run, or a commit on `main` whose title starts with
 a version publishes `ojuny-welcome.bin`, `ojuny-welcome-flake.tar.gz`, and
 `SHA256SUMS`. The release workflow records the asset in `binary-url.json`, so
 the flake can install the prebuilt binary with `lib.mkBinary`.
+
