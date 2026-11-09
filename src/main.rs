@@ -103,6 +103,20 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
             records.insert(record_path(record), record.clone());
         }
     }
+    if let Some(parent) = records.get("desktop.ojuny.dux.dockConfigs.dock").cloned() {
+        if let Some(mut enabled) = scan::scan_value(&parent.value)
+            .into_iter()
+            .find(|record| record.path() == "enabled")
+        {
+            enabled.file = parent.file.clone();
+            enabled.byte_start += parent.byte_start;
+            enabled.byte_end += parent.byte_start;
+            records.insert(
+                "desktop.ojuny.dux.dockConfigs.dock.enabled".to_string(),
+                enabled,
+            );
+        }
+    }
     let show_gpu_override = gpu_override_needed(&flake);
 
     let page_stack = gtk::Stack::builder()
@@ -191,7 +205,10 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
             context.records = Rc::new(records.clone());
             let editor = build(record, None, &context);
             let row = gtk::Box::new(gtk::Orientation::Vertical, 4);
+            row.set_margin_top(4);
+            row.set_margin_bottom(4);
             row.set_hexpand(true);
+            row.set_halign(gtk::Align::Fill);
             if let Some(label) = record.spec.label.as_deref() {
                 row.append(
                     &gtk::Label::builder()
@@ -203,6 +220,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
             }
             let editor_root = editor.root();
             editor_root.set_hexpand(true);
+            editor_root.set_halign(gtk::Align::Fill);
             row.append(&editor_root);
             root.append(&row);
             controls.push((record.clone(), editor));
@@ -246,7 +264,8 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
             .child(&root)
             .vexpand(true)
             .hexpand(true)
-            .hscrollbar_policy(gtk::PolicyType::Never)
+            .hscrollbar_policy(gtk::PolicyType::Automatic)
+            .propagate_natural_width(false)
             .build();
         page_stack.add_named(&scrolled, Some(spec.id));
         pages.push(PageView {
@@ -325,17 +344,17 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     layout.set_hexpand(true);
     layout.set_vexpand(true);
     layout.append(&paned);
-    layout.append(&footer);
 
     let header = adw::HeaderBar::new();
     let toolbar = adw::ToolbarView::new();
     toolbar.add_top_bar(&header);
     toolbar.set_content(Some(&layout));
+    toolbar.add_bottom_bar(&footer);
     let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Welcome to Ojuny")
-        .default_width(980)
-        .default_height(720)
+        .default_width(1180)
+        .default_height(760)
         .content(&toolbar)
         .build();
 
