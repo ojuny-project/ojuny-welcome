@@ -49,6 +49,9 @@ impl Default for WelcomeConfig {
 
 impl WelcomeConfig {
     pub fn path() -> PathBuf {
+        if let Some(path) = std::env::var_os("OJUNY_WELCOME_CONFIG") {
+            return PathBuf::from(path);
+        }
         config_base().join("ojuny-welcome").join("config.json")
     }
 

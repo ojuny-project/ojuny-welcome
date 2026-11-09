@@ -28,6 +28,8 @@ engine and widget library.
 State is stored in `~/.config/ojuny-welcome/config.json`. The wizard marks
 completion after a successful save. `--autostart` exits immediately when setup
 is complete. `--reset` clears completion and starts the flow again.
+`OJUNY_WELCOME_CONFIG` overrides the state file path without changing
+`XDG_CONFIG_HOME`, so GTK still reads the system theme settings.
 
 The final rebuild action reads `~/.config/nix-settings-gui/config.json` first,
 so it uses the same `terminal_command` and `rebuild_command` as nix-settings-gui.
