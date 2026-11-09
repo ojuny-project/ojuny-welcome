@@ -5,12 +5,12 @@ use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::rc::Rc;
 
-use gtk::prelude::*;
+use adw::prelude::*;
 use nix_settings_gui::model::Record;
 use nix_settings_gui::widgets::{build, facter_detect, BuildContext, Editor};
 use nix_settings_gui::{edit, flake_inputs, nixpkgs, scan};
 
-use config::WelcomeConfig;
+use config::{NixSettingsGuiConfig, WelcomeConfig};
 use pages::{PageKind, PageSpec, PAGES};
 
 fn record_path(record: &Record) -> String {
@@ -18,6 +18,19 @@ fn record_path(record: &Record) -> String {
     path.strip_prefix("config.")
         .unwrap_or(&path)
         .to_string()
+}
+
+fn page_icon(name: &str) -> gtk::Image {
+    let theme = gtk::gdk::Display::default().map(|display| gtk::IconTheme::for_display(&display));
+    let chosen = theme
+        .as_ref()
+        .and_then(|theme| {
+            [name, "preferences-system-symbolic", "application-x-executable-symbolic"]
+                .into_iter()
+                .find(|candidate| theme.has_icon(candidate))
+        })
+        .unwrap_or("preferences-system-symbolic");
+    gtk::Image::from_icon_name(chosen)
 }
 
 const APP_ID: &str = "org.ojuny.Welcome";
@@ -45,7 +58,10 @@ fn main() -> gtk::glib::ExitCode {
         .position(|arg| arg == "--flake")
         .and_then(|index| args.get(index + 1).cloned());
 
-    let application = gtk::Application::builder().application_id(APP_ID).build();
+    let application = adw::Application::builder().application_id(APP_ID).build();
+    application.connect_startup(|_| {
+        gtk::Window::set_default_icon_name("preferences-system");
+    });
     application.connect_activate(move |app| {
         let mut config = WelcomeConfig::load();
         if reset {
@@ -73,7 +89,7 @@ fn main() -> gtk::glib::ExitCode {
     application.run_with_args(&gtk_args)
 }
 
-fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
+fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     let scanned = match scan::scan_root(&flake) {
         Ok(scanned) => scanned,
         Err(error) => {
@@ -91,6 +107,7 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
 
     let page_stack = gtk::Stack::builder()
         .transition_type(gtk::StackTransitionType::Crossfade)
+        .hexpand(true)
         .vexpand(true)
         .build();
     let mut pages = Vec::new();
@@ -100,6 +117,8 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
         root.set_margin_bottom(18);
         root.set_margin_start(24);
         root.set_margin_end(24);
+        root.set_hexpand(true);
+        root.set_vexpand(true);
         root.append(
             &gtk::Label::builder()
                 .label(spec.subtitle)
@@ -172,6 +191,7 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
             context.records = Rc::new(records.clone());
             let editor = build(record, None, &context);
             let row = gtk::Box::new(gtk::Orientation::Vertical, 4);
+            row.set_hexpand(true);
             if let Some(label) = record.spec.label.as_deref() {
                 row.append(
                     &gtk::Label::builder()
@@ -181,7 +201,9 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
                         .build(),
                 );
             }
-            row.append(&editor.root());
+            let editor_root = editor.root();
+            editor_root.set_hexpand(true);
+            row.append(&editor_root);
             root.append(&row);
             controls.push((record.clone(), editor));
         }
@@ -198,6 +220,7 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
                 .iter()
                 .map(|(record, editor)| (record_path(record), editor.clone()))
                 .collect();
+            picker.set_selected(current_style_index(&editors) as u32);
             picker.connect_selected_notify(move |picker| {
                 let Some((preset, dock)) = values.get(picker.selected() as usize) else {
                     return;
@@ -222,6 +245,7 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
         let scrolled = gtk::ScrolledWindow::builder()
             .child(&root)
             .vexpand(true)
+            .hexpand(true)
             .hscrollbar_policy(gtk::PolicyType::Never)
             .build();
         page_stack.add_named(&scrolled, Some(spec.id));
@@ -231,7 +255,7 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
         });
     }
 
-    let (next_steps, reset_row) = build_next_steps();
+    let (next_steps, reset_row, rebuild_row) = build_next_steps();
     page_stack.add_named(&next_steps, Some("next-steps"));
 
     let wizard = Rc::new(Wizard {
@@ -252,7 +276,7 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
     for page in &wizard.pages {
         let row = gtk::ListBoxRow::new();
         let content = gtk::Box::new(gtk::Orientation::Horizontal, 8);
-        content.append(&gtk::Image::from_icon_name(page.spec.icon));
+        content.append(&page_icon(page.spec.icon));
         content.append(
             &gtk::Label::builder()
                 .label(page.spec.title)
@@ -267,16 +291,23 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
     let sidebar_scroll = gtk::ScrolledWindow::builder()
         .child(&sidebar)
         .width_request(230)
+        .vexpand(true)
         .build();
 
     let content = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    content.set_hexpand(true);
+    content.set_vexpand(true);
     content.append(&wizard.page_stack);
     content.append(&wizard.status);
 
-    let paned = gtk::Box::new(gtk::Orientation::Horizontal, 0);
-    paned.append(&sidebar_scroll);
-    paned.append(&gtk::Separator::new(gtk::Orientation::Vertical));
-    paned.append(&content);
+    let paned = gtk::Paned::new(gtk::Orientation::Horizontal);
+    paned.set_start_child(Some(&sidebar_scroll));
+    paned.set_end_child(Some(&content));
+    paned.set_position(230);
+    paned.set_hexpand(true);
+    paned.set_vexpand(true);
+    paned.set_shrink_start_child(true);
+    paned.set_shrink_end_child(true);
 
     let back = gtk::Button::with_label("Back");
     let next = gtk::Button::with_label("Next");
@@ -291,18 +322,22 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
     footer.append(&next);
 
     let layout = gtk::Box::new(gtk::Orientation::Vertical, 0);
+    layout.set_hexpand(true);
+    layout.set_vexpand(true);
     layout.append(&paned);
     layout.append(&footer);
 
-    let header = gtk::HeaderBar::new();
-    let window = gtk::ApplicationWindow::builder()
+    let header = adw::HeaderBar::new();
+    let toolbar = adw::ToolbarView::new();
+    toolbar.add_top_bar(&header);
+    toolbar.set_content(Some(&layout));
+    let window = adw::ApplicationWindow::builder()
         .application(app)
         .title("Welcome to Ojuny")
         .default_width(980)
         .default_height(720)
-        .child(&layout)
+        .content(&toolbar)
         .build();
-    window.set_titlebar(Some(&header));
 
     if wizard.config.borrow().setup_completed {
         show_next_steps(&wizard, &sidebar, &next);
@@ -353,12 +388,18 @@ fn build_window(app: &gtk::Application, flake: String, config: WelcomeConfig) {
         let wizard = wizard.clone();
         let sidebar = sidebar.clone();
         let next_button = next.clone();
-        reset_row.connect_clicked(move |_| {
+        reset_row.connect_activated(move |_| {
             let mut config = wizard.config.borrow_mut();
             config.reset();
             let _ = config.save();
             drop(config);
             show_wizard(&wizard, &sidebar, &next_button);
+        });
+    }
+    {
+        let wizard = wizard.clone();
+        rebuild_row.connect_activated(move |_| {
+            run_rebuild(&wizard);
         });
     }
 
@@ -403,6 +444,46 @@ fn finish(wizard: &Rc<Wizard>, sidebar: &gtk::ListBox, next: &gtk::Button) {
     }
 }
 
+fn run_rebuild(wizard: &Rc<Wizard>) {
+    let gui = NixSettingsGuiConfig::load().unwrap_or_default();
+    let config = wizard.config.borrow();
+    let command = gui
+        .rebuild_command
+        .clone()
+        .or_else(|| config.rebuild_command.clone())
+        .unwrap_or_else(|| {
+            format!(
+                "sudo nixos-rebuild switch --flake {}#$(hostname)",
+                wizard.flake
+            )
+        });
+    let terminal = gui
+        .terminal_command
+        .clone()
+        .or_else(|| config.terminal_command.clone())
+        .unwrap_or_else(|| "ghostty -e zsh -c".to_string());
+    drop(config);
+    let full = if terminal.contains("{cmd}") {
+        terminal.replace("{cmd}", &command)
+    } else {
+        format!(
+            "{} {}",
+            terminal,
+            nix_settings_gui::apply::shell_quote(&command)
+        )
+    };
+    wizard.status.set_text("Rebuilding...");
+    if let Err(error) = std::process::Command::new("sh")
+        .arg("-c")
+        .arg(full)
+        .spawn()
+    {
+        wizard
+            .status
+            .set_text(&format!("Cannot rebuild: {error}"));
+    }
+}
+
 fn show_wizard(wizard: &Rc<Wizard>, sidebar: &gtk::ListBox, next: &gtk::Button) {
     if wizard.pages.is_empty() {
         return;
@@ -415,6 +496,30 @@ fn show_next_steps(wizard: &Rc<Wizard>, _sidebar: &gtk::ListBox, next: &gtk::But
     wizard.page_stack.set_visible_child_name("next-steps");
     wizard.status.set_text("Setup is complete");
     next.set_label("Open settings");
+}
+
+fn current_style_index(editors: &[(String, Editor)]) -> usize {
+    let mut bar = None;
+    let mut dock = false;
+    for (path, editor) in editors {
+        if path == "ojuny.dux.barPreset" {
+            if let Editor::Dropdown { combo, choices } = editor {
+                if let Some(choice) = choices.get(combo.selected() as usize) {
+                    bar = Some(choice.trim_matches('"').to_string());
+                }
+            }
+        } else if path == "desktop.ojuny.dux.dockConfigs.dock.enabled" {
+            if let Editor::Switch(switch) = editor {
+                dock = switch.is_active();
+            }
+        }
+    }
+    match (bar.as_deref(), dock) {
+        (Some("taskbar"), _) => 0,
+        (_, true) => 1,
+        (Some("simple-island"), _) => 3,
+        _ => 2,
+    }
 }
 
 fn current_nixpkgs_channel(flake: &str) -> Option<String> {
@@ -446,36 +551,7 @@ fn gpu_override_needed(flake: &str) -> bool {
     detection.state != "matched"
 }
 
-fn action_row(title: &str, subtitle: &str, command: &'static str) -> gtk::Button {
-    let button = gtk::Button::new();
-    button.add_css_class("flat");
-    let content = gtk::Box::new(gtk::Orientation::Vertical, 2);
-    content.append(
-        &gtk::Label::builder()
-            .label(title)
-            .xalign(0.0)
-            .css_classes(["title-5"])
-            .build(),
-    );
-    content.append(
-        &gtk::Label::builder()
-            .label(subtitle)
-            .xalign(0.0)
-            .wrap(true)
-            .css_classes(["dim-label"])
-            .build(),
-    );
-    button.set_child(Some(&content));
-    button.connect_clicked(move |_| {
-        let mut parts = command.split_whitespace();
-        if let Some(program) = parts.next() {
-            let _ = std::process::Command::new(program).args(parts).spawn();
-        }
-    });
-    button
-}
-
-fn build_next_steps() -> (gtk::Box, gtk::Button) {
+fn build_next_steps() -> (gtk::Box, adw::ActionRow, adw::ActionRow) {
     let root = gtk::Box::new(gtk::Orientation::Vertical, 12);
     root.set_margin_top(24);
     root.set_margin_bottom(24);
@@ -496,23 +572,42 @@ fn build_next_steps() -> (gtk::Box, gtk::Button) {
             .css_classes(["dim-label"])
             .build(),
     );
-    root.append(&action_row(
-        "Update your system",
-        "Open the settings GUI",
-        "nix-settings-gui",
-    ));
-    root.append(&action_row(
-        "Read the manual",
-        "Open the Ojuny manual",
-        "ojuny-manual",
-    ));
-    root.append(&action_row(
-        "Visit the website",
-        "Open the what-is-ojuny page",
-        "xdg-open https://ojuny-project.github.io/",
-    ));
-    let reset = gtk::Button::with_label("Re-run the setup wizard");
-    reset.add_css_class("flat");
-    root.append(&reset);
-    (root, reset)
+    let group = adw::PreferencesGroup::new();
+    let rebuild = adw::ActionRow::builder()
+        .title("Rebuild the system")
+        .subtitle("Apply the saved settings and rebuild now")
+        .activatable(true)
+        .build();
+    group.add(&rebuild);
+    let actions = [
+        ("Update your system", "Open the settings GUI", "nix-settings-gui"),
+        ("Read the manual", "Open the Ojuny manual", "ojuny-manual"),
+        (
+            "Visit the website",
+            "Open the what-is-ojuny page",
+            "xdg-open https://ojuny-project.github.io/",
+        ),
+    ];
+    for (title, subtitle, command) in actions {
+        let row = adw::ActionRow::builder()
+            .title(title)
+            .subtitle(subtitle)
+            .activatable(true)
+            .build();
+        row.connect_activated(move |_| {
+            let mut parts = command.split_whitespace();
+            if let Some(program) = parts.next() {
+                let _ = std::process::Command::new(program).args(parts).spawn();
+            }
+        });
+        group.add(&row);
+    }
+    let reset = adw::ActionRow::builder()
+        .title("Re-run the setup wizard")
+        .subtitle("Reset completion and start from the first page")
+        .activatable(true)
+        .build();
+    group.add(&reset);
+    root.append(&group);
+    (root, reset, rebuild)
 }

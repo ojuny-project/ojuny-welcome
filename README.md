@@ -29,6 +29,9 @@ State is stored in `~/.config/ojuny-welcome/config.json`. The wizard marks
 completion after a successful save. `--autostart` exits immediately when setup
 is complete. `--reset` clears completion and starts the flow again.
 
+The final rebuild action reads `~/.config/nix-settings-gui/config.json` first,
+so it uses the same `terminal_command` and `rebuild_command` as nix-settings-gui.
+
 ## Build
 
 From this directory:
@@ -46,4 +49,3 @@ A `v*` tag, a manual workflow run, or a commit on `main` whose title starts with
 a version publishes `ojuny-welcome.bin`, `ojuny-welcome-flake.tar.gz`, and
 `SHA256SUMS`. The release workflow records the asset in `binary-url.json`, so
 the flake can install the prebuilt binary with `lib.mkBinary`.
-

@@ -1,6 +1,23 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Debug, Clone, Deserialize, Default)]
+pub struct NixSettingsGuiConfig {
+    #[serde(default)]
+    pub terminal_command: Option<String>,
+    #[serde(default)]
+    pub rebuild_command: Option<String>,
+}
+
+impl NixSettingsGuiConfig {
+    pub fn load() -> Option<Self> {
+        let path = config_base().join("nix-settings-gui").join("config.json");
+        std::fs::read_to_string(path)
+            .ok()
+            .and_then(|text| serde_json::from_str(&text).ok())
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct WelcomeConfig {
     #[serde(default)]
@@ -32,10 +49,7 @@ impl Default for WelcomeConfig {
 
 impl WelcomeConfig {
     pub fn path() -> PathBuf {
-        let base = std::env::var_os("XDG_CONFIG_HOME")
-            .map(PathBuf::from)
-            .unwrap_or_else(|| home().join(".config"));
-        base.join("ojuny-welcome").join("config.json")
+        config_base().join("ojuny-welcome").join("config.json")
     }
 
     pub fn load() -> Self {
@@ -74,6 +88,12 @@ fn home() -> PathBuf {
     std::env::var_os("HOME")
         .map(PathBuf::from)
         .unwrap_or_default()
+}
+
+fn config_base() -> PathBuf {
+    std::env::var_os("XDG_CONFIG_HOME")
+        .map(PathBuf::from)
+        .unwrap_or_else(|| home().join(".config"))
 }
 
 #[cfg(test)]

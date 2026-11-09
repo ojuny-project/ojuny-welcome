@@ -90,6 +90,14 @@
           sed -i 's|path = "../nix-settings-gui"|path = "nix-settings-gui"|' $out/Cargo.toml
         '';
 
+        runtimePath = lib.makeBinPath (
+          with pkgs;
+          [
+            wlr-randr
+            nixfmt
+          ]
+        );
+
         package = pkgs.rustPlatform.buildRustPackage {
           pname = "ojuny-welcome";
           version = "0.1.0";
@@ -110,6 +118,10 @@
           RUSTFLAGS = "-C link-arg=-fuse-ld=mold";
           TINTED_SCHEMES_DIR = "${tinted-theming}";
           doCheck = true;
+
+          preFixup = ''
+            gappsWrapperArgs+=(--prefix PATH : "${runtimePath}")
+          '';
 
           postInstall = ''
             install -Dm644 ${./org.ojuny.Welcome.desktop} \
@@ -174,6 +186,8 @@
             gtk4
             libadwaita
             glib
+            wlr-randr
+            nixfmt
           ];
           TINTED_SCHEMES_DIR = "${tinted-theming}";
         };
