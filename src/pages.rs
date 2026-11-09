@@ -29,7 +29,7 @@ const fn control(path: &'static str, group: &'static str) -> ControlSpec {
 pub static PAGES: &[PageSpec] = &[
     PageSpec {
         id: "monitors",
-        title: "Monitor setup",
+        title: "Monitors",
         subtitle: "Arrange your displays and set their position.",
         icon: "preferences-desktop-display-symbolic",
         kind: PageKind::Options,
@@ -37,7 +37,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "audio",
-        title: "Audio setup",
+        title: "Audio",
         subtitle: "Choose the PipeWire server settings.",
         icon: "audio-card-symbolic",
         kind: PageKind::Options,
@@ -50,7 +50,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "browser",
-        title: "Browser select",
+        title: "Browser",
         subtitle: "Pick the default web browser.",
         icon: "web-browser-symbolic",
         kind: PageKind::Options,
@@ -58,7 +58,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "layout",
-        title: "Default layout",
+        title: "Layout",
         subtitle: "Choose the default window layout.",
         icon: "view-grid-symbolic",
         kind: PageKind::Options,
@@ -66,7 +66,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "style",
-        title: "Starter styling",
+        title: "Styling",
         subtitle: "Pick a starting bar and dock layout.",
         icon: "preferences-desktop-theme-symbolic",
         kind: PageKind::Style,
@@ -77,7 +77,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "appearance",
-        title: "Theme, font, and icons",
+        title: "Appearance",
         subtitle: "Choose the palette, fonts, and icon theme.",
         icon: "preferences-desktop-font-symbolic",
         kind: PageKind::Options,
@@ -92,7 +92,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "hardware",
-        title: "Hardware profile",
+        title: "Hardware",
         subtitle: "Confirm the detected profile or choose one manually.",
         icon: "computer-symbolic",
         kind: PageKind::Hardware,
@@ -103,7 +103,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "apps",
-        title: "Quick applications",
+        title: "Applications",
         subtitle: "Enable the applications you want on first boot.",
         icon: "system-software-install-symbolic",
         kind: PageKind::Options,
@@ -120,7 +120,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "sources",
-        title: "Nixpkgs and tool sources",
+        title: "Sources",
         subtitle: "Pick the nixpkgs channel and how Ojuny tools are built.",
         icon: "folder-download-symbolic",
         kind: PageKind::Sources,
@@ -131,7 +131,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "nix",
-        title: "Basic Nix configuration",
+        title: "Nix settings",
         subtitle: "Set the first-boot Nix defaults.",
         icon: "nix-snowflake-symbolic",
         kind: PageKind::Options,
@@ -155,7 +155,7 @@ pub static PAGES: &[PageSpec] = &[
     },
     PageSpec {
         id: "patches",
-        title: "Default patches",
+        title: "Patches",
         subtitle: "Enable the patches included with the template.",
         icon: "applications-system-symbolic",
         kind: PageKind::Options,

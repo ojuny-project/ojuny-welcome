@@ -121,8 +121,6 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
 
     let page_stack = gtk::Stack::builder()
         .transition_type(gtk::StackTransitionType::Crossfade)
-        .hhomogeneous(false)
-        .vhomogeneous(false)
         .hexpand(true)
         .vexpand(true)
         .build();
@@ -221,13 +219,8 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
                 );
             }
             let editor_root = editor.root();
-            if editor.wants_width() {
-                editor_root.set_hexpand(true);
-                editor_root.set_halign(gtk::Align::Fill);
-            } else {
-                editor_root.set_hexpand(false);
-                editor_root.set_halign(gtk::Align::Start);
-            }
+            editor_root.set_hexpand(true);
+            editor_root.set_halign(gtk::Align::Fill);
             row.append(&editor_root);
             root.append(&row);
             controls.push((record.clone(), editor));
