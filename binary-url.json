@@ -1,6 +1,18 @@
 {
   "repo": "ojuny-project/ojuny-welcome",
   "system": "x86_64-linux",
-  "latest": "",
-  "releases": {}
+  "latest": "v0.1.0",
+  "releases": {
+    "v0.1.0": {
+      "tag": "v0.1.0",
+      "version": "0.1.0",
+      "packages": {
+        "ojuny-welcome": {
+          "file": "ojuny-welcome.bin",
+          "url": "https://github.com/ojuny-project/ojuny-welcome/releases/download/v0.1.0/ojuny-welcome.bin",
+          "hash": "sha256-rh34BmuCwe1/Cxf8QpbTbRmBkLnfTVC6TM/UpAHDPck="
+        }
+      }
+    }
+  }
 }
