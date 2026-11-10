@@ -105,6 +105,17 @@ pub static PAGES: &[PageSpec] = &[
         ],
     },
     PageSpec {
+        id: "boot",
+        title: "Boot",
+        subtitle: "Configure multiboot support and the recovery UKI.",
+        icon: "system-reboot-symbolic",
+        kind: PageKind::Options,
+        controls: &[
+            control("ojuny.multiboot.enable", "Boot entries"),
+            control("ojuny.recovery.enable", "Boot entries"),
+        ],
+    },
+    PageSpec {
         id: "apps",
         title: "Applications",
         subtitle: "Enable the applications you want on first boot.",

@@ -648,6 +648,11 @@ fn build_next_steps() -> (gtk::Box, adw::ActionRow, adw::ActionRow) {
     group.add(&rebuild);
     let actions = [
         ("Update your system", "Open the settings GUI", "nix-settings-gui"),
+        (
+            "Set up Secure Boot",
+            "Open the Secure Boot settings",
+            "nix-settings-gui --page Secure",
+        ),
         ("Read the manual", "Open the Ojuny manual", "ojuny-manual"),
         (
             "Visit the website",
