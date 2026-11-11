@@ -243,7 +243,12 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
         }
         if spec.kind == PageKind::Style {
             let presets = ["Windows", "macOS", "Ojuny", "Island"];
-            let values = [("taskbar", false), ("status", true), ("default", false), ("simple-island", false)];
+            let values = [
+                ("taskbar", false, "full", "winmenu"),
+                ("status", true, "spotlight", "ojuny"),
+                ("default", false, "island", "ojuny"),
+                ("simple-island", false, "island", "ojuny"),
+            ];
             let picker = gtk::DropDown::from_strings(&presets);
             let heading = gtk::Label::builder()
                 .label("Starting layout")
@@ -256,20 +261,20 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
                 .collect();
             picker.set_selected(current_style_index(&editors) as u32);
             picker.connect_selected_notify(move |picker| {
-                let Some((preset, dock)) = values.get(picker.selected() as usize) else {
+                let Some((preset, dock, launcher, menu)) = values.get(picker.selected() as usize) else {
                     return;
                 };
                 for (path, editor) in &editors {
                     if path == "ojuny.dux.barPreset" {
-                        if let Editor::Dropdown { combo, choices } = editor {
-                            if let Some(index) = choices.iter().position(|choice| choice.trim_matches('"') == *preset) {
-                                combo.set_selected(index as u32);
-                            }
-                        }
+                        set_dropdown(editor, preset);
                     } else if path == "desktop.ojuny.dux.dockConfigs.dock.enabled" {
                         if let Editor::Switch(switch) = editor {
                             switch.set_active(*dock);
                         }
+                    } else if path == "desktop.ojuny.dux.settings.launcherStyle" {
+                        set_dropdown(editor, launcher);
+                    } else if path == "ojuny.menu.toggleTarget" {
+                        set_dropdown(editor, menu);
                     }
                 }
             });
@@ -563,6 +568,17 @@ fn show_next_steps(wizard: &Rc<Wizard>, _sidebar: &gtk::ListBox, next: &gtk::But
     wizard.page_host.append(&wizard.next_steps);
     wizard.status.set_text("Setup is complete");
     next.set_label("Open settings");
+}
+
+fn set_dropdown(editor: &Editor, value: &str) {
+    if let Editor::Dropdown { combo, choices } = editor {
+        if let Some(index) = choices
+            .iter()
+            .position(|choice| choice.trim_matches('"') == value)
+        {
+            combo.set_selected(index as u32);
+        }
+    }
 }
 
 fn current_style_index(editors: &[(String, Editor)]) -> usize {
