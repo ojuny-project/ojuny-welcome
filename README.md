@@ -33,6 +33,8 @@ is complete. `--reset` clears completion and starts the flow again.
 
 The final rebuild action reads `~/.config/nix-settings-gui/config.json` first,
 so it uses the same `terminal_command` and `rebuild_command` as nix-settings-gui.
+The flake path comes from `--flake`, the welcome config, `OJUNY_FLAKE`,
+`/etc/ojuny/flake-path`, or `~/repos/nix-flake`, in that order.
 
 ## Build
 

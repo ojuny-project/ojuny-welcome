@@ -43,11 +43,11 @@
         "tinted-theming": "tinted-theming"
       },
       "locked": {
-        "lastModified": 1794424613,
-        "narHash": "sha256-rkicsMaZqKes5Mjx3n/aCXnzRM31P+x2fC3q6QYEUNE=",
+        "lastModified": 1794430354,
+        "narHash": "sha256-px23jDzPuzt842tD6AYge2g0K3ilK92PaHSZEUgXUUQ=",
         "owner": "ojuny-project",
         "repo": "nix-settings-gui",
-        "rev": "bf2391694eff18b442caa56944b666d9af75ba48",
+        "rev": "18a79ee2138cfc6c16bde219b53d303e5a4d4ca8",
         "type": "github"
       },
       "original": {

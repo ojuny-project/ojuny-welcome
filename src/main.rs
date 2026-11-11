@@ -78,6 +78,7 @@ fn main() -> gtk::glib::ExitCode {
             .clone()
             .or_else(|| config.flake_path.clone())
             .or_else(|| std::env::var("OJUNY_FLAKE").ok())
+            .or_else(system_flake_path)
             .unwrap_or_else(|| {
                 let home = std::env::var_os("HOME")
                     .map(std::path::PathBuf::from)
@@ -623,8 +624,51 @@ fn set_nixpkgs_channel(flake: &str, channel: &str) -> Result<(), String> {
     Ok(())
 }
 
+fn system_flake_path() -> Option<String> {
+    let text = std::fs::read_to_string("/etc/ojuny/flake-path").ok()?;
+    let path = text.trim();
+    if path.is_empty() || !std::path::Path::new(path).join("flake.nix").is_file() {
+        return None;
+    }
+    Some(path.to_string())
+}
+
+fn find_facter(dir: &std::path::Path, found: &mut Vec<std::path::PathBuf>) {
+    let Ok(entries) = std::fs::read_dir(dir) else {
+        return;
+    };
+    for entry in entries.flatten() {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with('.')
+            || matches!(name.as_ref(), "result" | "target")
+            || name.starts_with("result-")
+        {
+            continue;
+        }
+        let path = entry.path();
+        if path.is_dir() {
+            find_facter(&path, found);
+        } else if name == "facter.json" {
+            found.push(path);
+        }
+    }
+}
+
 fn gpu_override_needed(flake: &str) -> bool {
-    let path = std::path::Path::new(flake).join("modules/07-system/facter.json");
+    let root = std::path::Path::new(flake);
+    let preferred = root.join("modules/facter.json");
+    let path = if preferred.is_file() {
+        preferred
+    } else {
+        let mut found = Vec::new();
+        find_facter(root, &mut found);
+        found.sort();
+        let Some(path) = found.into_iter().next() else {
+            return true;
+        };
+        path
+    };
     let Ok(text) = std::fs::read_to_string(path) else {
         return true;
     };
