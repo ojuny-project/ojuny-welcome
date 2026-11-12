@@ -33,7 +33,7 @@ pub static PAGES: &[PageSpec] = &[
         subtitle: "Arrange your displays and set their position.",
         icon: "preferences-desktop-display-symbolic",
         kind: PageKind::Options,
-        controls: &[control("desktop.ojuny.mango.rules.monitor_rule", "Monitors")],
+        controls: &[control("services.nix-settings-gui.monitors", "Monitors")],
     },
     PageSpec {
         id: "audio",
@@ -207,6 +207,30 @@ mod tests {
     fn page_lookup_finds_every_page() {
         for page in PAGES {
             assert!(self::page(page.id).is_some());
+        }
+    }
+
+    #[test]
+    fn monitors_control_uses_the_declared_option() {
+        let control = &page("monitors").unwrap().controls[0];
+        assert_eq!(
+            control.path, "services.nix-settings-gui.monitors",
+            "the monitors widget is bound by nix-settings-gui/docs/comment-syntax.md:385"
+        );
+    }
+
+    #[test]
+    fn control_paths_are_not_generated_values() {
+        for page in PAGES {
+            for control in page.controls {
+                assert!(
+                    !control.path.starts_with("desktop.ojuny.mango.rules.")
+                        && !control.path.starts_with("ojuny.mango."),
+                    "{} is a generated value, not an option: {}",
+                    control.path,
+                    page.id
+                );
+            }
         }
     }
 }

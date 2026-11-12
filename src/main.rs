@@ -54,6 +54,10 @@ struct Wizard {
 
 fn main() -> gtk::glib::ExitCode {
     let args: Vec<String> = std::env::args().skip(1).collect();
+    if args.iter().any(|arg| arg == "--help" || arg == "-h") {
+        print_help();
+        return gtk::glib::ExitCode::from(0);
+    }
     let autostart = args.iter().any(|arg| arg == "--autostart");
     let reset = args.iter().any(|arg| arg == "--reset");
     let flake_arg = args
@@ -65,7 +69,13 @@ fn main() -> gtk::glib::ExitCode {
     application.connect_startup(|_| {
         gtk::Window::set_default_icon_name("preferences-system");
     });
+    let window: Rc<RefCell<Option<adw::ApplicationWindow>>> = Rc::new(RefCell::new(None));
+    let window_slot = window.clone();
     application.connect_activate(move |app| {
+        if let Some(existing) = window_slot.borrow().as_ref() {
+            existing.present();
+            return;
+        }
         let mut config = WelcomeConfig::load();
         if reset {
             config.reset();
@@ -87,13 +97,28 @@ fn main() -> gtk::glib::ExitCode {
             });
         config.flake_path = Some(flake.clone());
         let _ = config.save();
-        build_window(app, flake, config);
+        let built = build_window(app, flake, config);
+        let slot = window_slot.clone();
+        built.connect_destroy(move |_| *slot.borrow_mut() = None);
+        window_slot.replace(Some(built));
     });
     let gtk_args = [std::env::args().next().unwrap_or_default()];
     application.run_with_args(&gtk_args)
 }
 
-fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
+fn print_help() {
+    println!(
+        "Usage: ojuny-welcome [OPTION]...
+Welcome menu for ojuny with the initial setup flow.
+
+  --autostart      Open the wizard unless setup is already complete.
+  --reset          Clear completion and start the flow again.
+  --flake PATH     Use PATH as the configuration flake.
+  -h, --help       Show this help and exit."
+    );
+}
+
+fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) -> adw::ApplicationWindow {
     let scanned = match scan::scan_root(&flake) {
         Ok(scanned) => scanned,
         Err(error) => {
@@ -232,6 +257,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
                     | Editor::ModuleList { .. }
                     | Editor::Submodule { .. }
                     | Editor::HorizontalSubmodule { .. }
+                    | Editor::Monitors { .. }
                     | Editor::Slider(_)
                     | Editor::Theme { .. }
                     | Editor::StyleChoice { .. }
@@ -469,6 +495,7 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) {
     }
 
     window.present();
+    window
 }
 
 fn select_page(wizard: &Rc<Wizard>, sidebar: &gtk::ListBox, index: usize) {
@@ -742,4 +769,30 @@ fn build_next_steps() -> (gtk::Box, adw::ActionRow, adw::ActionRow) {
     group.add(&reset);
     root.append(&group);
     (root, reset, rebuild)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn monitors_control_resolves_in_template() {
+        let Some(template) = std::env::var_os("OJUNY_TEMPLATE") else {
+            return;
+        };
+        let template = template.to_string_lossy();
+        let scanned = scan::scan_root(&template).expect("scan template");
+        let paths: Vec<String> = scanned
+            .menus
+            .iter()
+            .flat_map(|menu| menu.records.iter())
+            .map(record_path)
+            .collect();
+        let control = &pages::page("monitors").unwrap().controls[0];
+        assert!(
+            paths.iter().any(|path| path == control.path),
+            "{} must be an annotated option in the template (nix-settings-gui/docs/comment-syntax.md:385)",
+            control.path
+        );
+    }
 }
