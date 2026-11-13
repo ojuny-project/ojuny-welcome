@@ -1,0 +1,10 @@
+# Tests
+# Local test record for this repository.
+# Run against commit c37a028 on 2026-11-13.
+# Device: ojuny test laptop, NixOS 26.11.20261111.d4f25a3, kernel 6.18.63.
+# Result: all listed tests passed.
+
+- PASS WELCOME-02: a second launch raises the existing window. Method: launch `ojuny-welcome` twice and count the `org.ojuny.Welcome` windows; exactly one remains. Evidence: RUN-02, `/tmp/opencode/welcome1.png`.
+- PASS UX-16: the wizard advances through its pages. Method: open the wizard, navigate with the sidebar and keyboard, and confirm the step counter moves through step 10 of 13 with the matching page content. Evidence: RUN-02, `/tmp/opencode/wnext3.png`.
+- PASS autostart guard: `--autostart` does not open the wizard when setup is complete. Method: with the completion marker present in `~/.config/ojuny-welcome/config.json`, run `ojuny-welcome --autostart`; it exits 0 without a window. Evidence: RUN-02.
+- PASS help: `--help` prints the CLI arguments. Method: run `ojuny-welcome --help` and check the documented options. Evidence: RUN-02.
