@@ -4,6 +4,7 @@ pub enum PageKind {
     Style,
     Hardware,
     Sources,
+    SettingsGui,
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -92,6 +93,14 @@ pub static PAGES: &[PageSpec] = &[
             control("stylix.icons.dark", "Icons"),
             control("stylix.icons.light", "Icons"),
         ],
+    },
+    PageSpec {
+        id: "settings-gui",
+        title: "Settings GUI",
+        subtitle: "Choose how the settings window looks and behaves.",
+        icon: "preferences-system-symbolic",
+        kind: PageKind::SettingsGui,
+        controls: &[],
     },
     PageSpec {
         id: "hardware",
@@ -199,7 +208,9 @@ mod tests {
         let mut ids = HashSet::new();
         for page in PAGES {
             assert!(ids.insert(page.id), "duplicate page id: {}", page.id);
-            assert!(!page.controls.is_empty(), "page has no controls: {}", page.id);
+            if page.kind != PageKind::SettingsGui {
+                assert!(!page.controls.is_empty(), "page has no controls: {}", page.id);
+            }
         }
     }
 

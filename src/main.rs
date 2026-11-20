@@ -10,7 +10,8 @@ use nix_settings_gui::model::Record;
 use nix_settings_gui::widgets::{build, facter_detect, BuildContext, Editor};
 use nix_settings_gui::{edit, flake_inputs, nixpkgs, scan};
 
-use config::{NixSettingsGuiConfig, WelcomeConfig};
+use config::{GuiSettings, NixSettingsGuiConfig, WelcomeConfig};
+use nix_settings_gui::config::ViewMode;
 use pages::{PageKind, PageSpec, PAGES};
 
 fn record_path(record: &Record) -> String {
@@ -201,6 +202,10 @@ fn build_window(app: &adw::Application, flake: String, config: WelcomeConfig) ->
             root.append(&heading);
             root.append(&picker);
             root.append(&notice);
+        }
+        if spec.kind == PageKind::SettingsGui {
+            let settings = Rc::new(RefCell::new(crate::config::load_gui_settings()));
+            root.append(&settings_gui_controls(settings));
         }
         let mut controls = Vec::new();
         let mut last_group = "";
@@ -598,6 +603,120 @@ fn show_next_steps(wizard: &Rc<Wizard>, _sidebar: &gtk::ListBox, next: &gtk::But
     next.set_label("Open settings");
 }
 
+fn settings_gui_controls(settings: Rc<RefCell<GuiSettings>>) -> gtk::Box {
+    let root = gtk::Box::new(gtk::Orientation::Vertical, 8);
+
+    root.append(&section_heading("GUI style"));
+    let picker = gtk::DropDown::from_strings(&["List", "Categories"]);
+    picker.set_selected(match settings.borrow().view_mode {
+        ViewMode::List => 0,
+        ViewMode::Categories => 1,
+    });
+    picker.set_halign(gtk::Align::Start);
+    {
+        let settings = settings.clone();
+        picker.connect_selected_notify(move |picker| {
+            settings.borrow_mut().view_mode = if picker.selected() == 1 {
+                ViewMode::Categories
+            } else {
+                ViewMode::List
+            };
+            persist_gui_settings(&settings);
+        });
+    }
+    let style_note = gtk::Label::builder()
+        .label("Requires restarting nix-settings-gui to apply.")
+        .xalign(0.0)
+        .wrap(true)
+        .css_classes(["dim-label", "caption"])
+        .build();
+    root.append(&picker);
+    root.append(&style_note);
+
+    root.append(&section_heading("Runtime preferences"));
+    root.append(&gui_switch(
+        &settings,
+        "Apply changes immediately",
+        "Run each option's applyCommand as soon as it changes",
+        |settings| settings.live_apply,
+        |settings, value| settings.live_apply = value,
+    ));
+    root.append(&gui_switch(
+        &settings,
+        "Expand setting details",
+        "Show setting descriptions and import origins by default",
+        |settings| settings.expand_details_by_default,
+        |settings, value| settings.expand_details_by_default = value,
+    ));
+    root.append(&gui_switch(
+        &settings,
+        "Sync git on open and save",
+        "Pull on open, then commit and push after saving",
+        |settings| settings.auto_git_sync,
+        |settings, value| settings.auto_git_sync = value,
+    ));
+    root.append(&gui_switch(
+        &settings,
+        "Reload mango after rebuild",
+        "Run mmsg dispatch reload_config after a successful rebuild",
+        |settings| settings.reload_mango_on_rebuild,
+        |settings, value| settings.reload_mango_on_rebuild = value,
+    ));
+    root.append(&gui_switch(
+        &settings,
+        "Reload DMS after rebuild",
+        "Run dms kill && mmsg dispatch spawn_shell,dms run after a successful rebuild",
+        |settings| settings.reload_dms_on_rebuild,
+        |settings, value| settings.reload_dms_on_rebuild = value,
+    ));
+
+    root
+}
+
+fn section_heading(text: &str) -> gtk::Label {
+    gtk::Label::builder()
+        .label(text)
+        .xalign(0.0)
+        .margin_top(6)
+        .css_classes(["title-5"])
+        .build()
+}
+
+fn gui_switch(
+    settings: &Rc<RefCell<GuiSettings>>,
+    label: &str,
+    tooltip: &str,
+    get: fn(&GuiSettings) -> bool,
+    set: fn(&mut GuiSettings, bool),
+) -> gtk::Box {
+    let switch = gtk::Switch::new();
+    switch.set_active(get(&settings.borrow()));
+    switch.set_valign(gtk::Align::Center);
+    {
+        let settings = settings.clone();
+        switch.connect_active_notify(move |switch| {
+            set(&mut settings.borrow_mut(), switch.is_active());
+            persist_gui_settings(&settings);
+        });
+    }
+    let text = gtk::Label::builder()
+        .label(label)
+        .xalign(0.0)
+        .hexpand(true)
+        .tooltip_text(tooltip)
+        .build();
+    let row = gtk::Box::new(gtk::Orientation::Horizontal, 8);
+    row.append(&text);
+    row.append(&switch);
+    row
+}
+
+fn persist_gui_settings(settings: &Rc<RefCell<GuiSettings>>) {
+    if let Err(error) = crate::config::save_gui_settings(&settings.borrow()) {
+        eprintln!("ojuny-welcome: cannot save settings GUI config: {error}");
+    }
+}
+
 fn set_dropdown(editor: &Editor, value: &str) {
     if let Editor::Dropdown { combo, choices } = editor {
         if let Some(index) = choices
@@ -699,7 +818,8 @@ fn gpu_override_needed(flake: &str) -> bool {
     let Ok(text) = std::fs::read_to_string(path) else {
         return true;
     };
-    let Some(detection) = facter_detect::detect_report(&text) else {
+    let catalog = facter_detect::ProfileCatalog::builtin();
+    let Some(detection) = facter_detect::detect_report(&text, &catalog) else {
         return true;
     };
     detection.state != "matched"

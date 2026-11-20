@@ -16,6 +16,7 @@ engine and widget library.
 - Default layout
 - Starter styling
 - Theme, font, and icons
+- Settings GUI
 - Hardware profile
 - Quick applications
 - Nixpkgs channel and tool sources
@@ -30,6 +31,10 @@ completion after a successful save. `--autostart` exits immediately when setup
 is complete. `--reset` clears completion and starts the flow again.
 `OJUNY_WELCOME_CONFIG` overrides the state file path without changing
 `XDG_CONFIG_HOME`, so GTK still reads the system theme settings.
+
+The Settings GUI page writes the settings GUI's own preferences to
+`~/.config/nix-settings-gui/config.json`: the list or category style and the
+runtime switches. The style takes effect the next time nix-settings-gui starts.
 
 The final rebuild action reads `~/.config/nix-settings-gui/config.json` first,
 so it uses the same `terminal_command` and `rebuild_command` as nix-settings-gui.
