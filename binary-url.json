@@ -1,7 +1,7 @@
 {
   "repo": "ojuny-project/ojuny-welcome",
   "system": "x86_64-linux",
-  "latest": "v0.1.1",
+  "latest": "v0.1.2",
   "releases": {
     "v0.1.0": {
       "tag": "v0.1.0",
@@ -33,6 +33,17 @@
           "file": "ojuny-welcome.bin",
           "url": "https://github.com/ojuny-project/ojuny-welcome/releases/download/v0.1.1/ojuny-welcome.bin",
           "hash": "sha256-QdhSlmd+p4MVerMUpRR4R5L0jDSYRjeee5DCPBjYN0o="
+        }
+      }
+    },
+    "v0.1.2": {
+      "tag": "v0.1.2",
+      "version": "0.1.2",
+      "packages": {
+        "ojuny-welcome": {
+          "file": "ojuny-welcome.bin",
+          "url": "https://github.com/ojuny-project/ojuny-welcome/releases/download/v0.1.2/ojuny-welcome.bin",
+          "hash": "sha256-n6iTiWXEdyjSbHRDX5ZiUO+yTXeEXduyp1tJNhHLrDk="
         }
       }
     }
