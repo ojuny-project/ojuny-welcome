@@ -23,7 +23,7 @@ sleep 2
 second=$!
 sleep 2
 test "$(pgrep -x ojuny-welcome | wc -l)" -eq 1
-if command -v wmctrl >/dev/null 2>&1; then
+if command -v wmctrl; then
   test "$(wmctrl -l -x | grep -c 'org.ojuny.Welcome')" -eq 1
 fi
-kill "$first" "$second" 2>/dev/null || true
+kill "$first" "$second" || true
