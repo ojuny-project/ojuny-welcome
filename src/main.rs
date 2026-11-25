@@ -554,7 +554,7 @@ fn run_rebuild(wizard: &Rc<Wizard>) {
         .or_else(|| config.rebuild_command.clone())
         .unwrap_or_else(|| {
             format!(
-                "sudo rm -f /boot/loader/loader.tmp; sudo nixos-rebuild switch --flake {}#$(hostname)",
+                "sudo nixos-rebuild switch --flake {}#$(hostname)",
                 wizard.flake
             )
         });
